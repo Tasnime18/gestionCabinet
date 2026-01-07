@@ -1,0 +1,347 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="logo">
+      <span class="logo-icon">🦷</span>
+      <span class="logo-text">Cabinet Dentaire Smile</span>
+    </div>
+    <div class="user-info">
+      <span>Bienvenue, {{ authService.getUsername() }}</span>
+      <button class="btn btn-outline" (click)="logout()">Déconnexion</button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs">
+    <button 
+      class="tab" 
+      [class.active]="activeTab === 'appointments'"
+      (click)="setActiveTab('appointments')">
+      📅 Mes Rendez-vous
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="activeTab === 'my-file'"
+      (click)="setActiveTab('my-file')">
+      📋 Mon Dossier
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="activeTab === 'about'"
+      (click)="setActiveTab('about')">
+      ℹ️ À Propos
+    </button>
+    <button 
+      class="tab" 
+      [class.active]="activeTab === 'services'"
+      (click)="setActiveTab('services')">
+      🏥 Nos Services
+    </button>
+  </nav>
+
+  <!-- Alert Messages -->
+  <div class="alert alert-error" *ngIf="error">
+    {{ error }}
+  </div>
+  <div class="alert alert-success" *ngIf="success">
+    {{ success }}
+  </div>
+
+  <!-- Appointments Tab -->
+  <section class="tab-content" *ngIf="activeTab === 'appointments'">
+    <div class="section-header">
+      <h2>Mes Rendez-vous</h2>
+      <button class="btn btn-primary" (click)="openAppointmentForm()">
+        ➕ Prendre un Rendez-vous
+      </button>
+    </div>
+
+    <div class="loading" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Chargement...</p>
+    </div>
+
+    <div class="appointments-list" *ngIf="!loading">
+      <div class="appointment-card" *ngFor="let apt of appointments" [class.past]="!isUpcoming(apt.appointmentDate)">
+        <div class="appointment-date">
+          <span class="date">{{ formatDate(apt.appointmentDate) }}</span>
+          <span class="status" [class]="apt.status.toLowerCase()">{{ apt.status }}</span>
+        </div>
+        <div class="appointment-details">
+          <p><strong>Médecin:</strong> {{ apt.medecinUsername }}</p>
+          <p *ngIf="apt.reason"><strong>Motif:</strong> {{ apt.reason }}</p>
+        </div>
+        <div class="appointment-actions" *ngIf="isUpcoming(apt.appointmentDate) && apt.status !== 'CANCELLED'">
+          <button class="btn btn-sm btn-outline" (click)="openRescheduleForm(apt)">
+            📅 Reprogrammer
+          </button>
+          <button class="btn btn-sm btn-danger" (click)="cancelAppointment(apt)">
+            ❌ Annuler
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="appointments.length === 0">
+        <span class="empty-icon">📅</span>
+        <p>Vous n'avez aucun rendez-vous.</p>
+        <button class="btn btn-primary" (click)="openAppointmentForm()">
+          Prendre un premier rendez-vous
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- My File Tab -->
+  <section class="tab-content" *ngIf="activeTab === 'my-file'">
+    <div class="loading" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Chargement...</p>
+    </div>
+
+    <div class="patient-file-content" *ngIf="!loading && hasPatientFile && myPatientFile">
+      <h2>Mon Dossier Patient</h2>
+      
+      <div class="file-section">
+        <h3>Informations Personnelles</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="label">Prénom:</span>
+            <span class="value">{{ myPatientFile.firstName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Nom:</span>
+            <span class="value">{{ myPatientFile.lastName }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Date de naissance:</span>
+            <span class="value">{{ myPatientFile.dateOfBirth | date:'longDate' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Genre:</span>
+            <span class="value">{{ myPatientFile.gender === 'M' ? 'Masculin' : 'Féminin' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Téléphone:</span>
+            <span class="value">{{ myPatientFile.phone }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Email:</span>
+            <span class="value">{{ myPatientFile.email }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Adresse:</span>
+            <span class="value">{{ myPatientFile.address }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="file-section">
+        <h3>Informations Médicales</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="label">Groupe sanguin:</span>
+            <span class="value">{{ myPatientFile.bloodType || 'Non spécifié' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Allergies:</span>
+            <span class="value">{{ myPatientFile.allergies || 'Aucune allergie connue' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Médicaments actuels:</span>
+            <span class="value">{{ myPatientFile.currentMedications || 'Aucun' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Antécédents médicaux:</span>
+            <span class="value">{{ myPatientFile.medicalHistory || 'Aucun antécédent médical notable' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Antécédents familiaux:</span>
+            <span class="value">{{ myPatientFile.familyMedicalHistory || 'Non spécifié' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="file-section">
+        <h3>Informations Dentaires</h3>
+        <div class="info-grid">
+          <div class="info-item full-width">
+            <span class="label">Historique dental:</span>
+            <span class="value">{{ myPatientFile.dentalHistory || 'Non spécifié' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Problèmes actuels:</span>
+            <span class="value">{{ myPatientFile.currentDentalIssues || 'Aucun problème signalé' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Traitements précédents:</span>
+            <span class="value">{{ myPatientFile.previousTreatments || 'Aucun traitement précédent' }}</span>
+          </div>
+          <div class="info-item full-width">
+            <span class="label">Notes dentaires:</span>
+            <span class="value">{{ myPatientFile.dentalNotes || 'Aucune note' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="file-section" *ngIf="myPatientFile.consultationNotes">
+        <h3>Notes du Médecin</h3>
+        <div class="consultation-notes">
+          {{ myPatientFile.consultationNotes }}
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && !hasPatientFile">
+      <span class="empty-icon">📋</span>
+      <p>Vous n'avez pas encore de dossier patient.</p>
+      <p class="text-muted">Votre médecin devra créer votre dossier lors de votre première consultation.</p>
+    </div>
+  </section>
+
+  <!-- About Tab -->
+  <section class="tab-content" *ngIf="activeTab === 'about'">
+    <div class="about-section">
+      <h2>À Propos du Cabinet</h2>
+      
+      <div class="about-card">
+        <div class="about-header">
+          <span class="clinic-icon">🏥</span>
+          <div>
+            <h3>{{ cabinetInfo.name }}</h3>
+            <p class="dentist">{{ cabinetInfo.dentist }}</p>
+            <p class="specialty">{{ cabinetInfo.specialty }}</p>
+          </div>
+        </div>
+
+        <div class="about-description">
+          <p>{{ cabinetInfo.description }}</p>
+        </div>
+
+        <div class="contact-info">
+          <h4>Informations de Contact</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="icon">📍</span>
+              <span>{{ cabinetInfo.address }}</span>
+            </div>
+            <div class="info-item">
+              <span class="icon">📞</span>
+              <span>{{ cabinetInfo.phone }}</span>
+            </div>
+            <div class="info-item">
+              <span class="icon">✉️</span>
+              <span>{{ cabinetInfo.email }}</span>
+            </div>
+            <div class="info-item">
+              <span class="icon">🕐</span>
+              <span>{{ cabinetInfo.hours }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Tab -->
+  <section class="tab-content" *ngIf="activeTab === 'services'">
+    <div class="services-section">
+      <h2>Nos Services</h2>
+      <p class="section-subtitle">Des soins dentaires complets pour toute la famille</p>
+
+      <div class="services-grid">
+        <div class="service-card" *ngFor="let service of services">
+          <span class="service-icon">{{ service.icon }}</span>
+          <h3>{{ service.title }}</h3>
+          <p>{{ service.description }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- New Appointment Modal -->
+  <div class="modal-overlay" *ngIf="showAppointmentForm" (click)="closeAppointmentForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Prendre un Rendez-vous</h3>
+        <button class="close-btn" (click)="closeAppointmentForm()">×</button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="createAppointment()">
+          <div class="form-group">
+            <label for="appointmentDate">Date et Heure *</label>
+            <input 
+              type="datetime-local" 
+              id="appointmentDate"
+              [(ngModel)]="newAppointment.appointmentDate" 
+              name="appointmentDate" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="reason">Motif de la visite</label>
+            <textarea 
+              id="reason"
+              [(ngModel)]="newAppointment.reason" 
+              name="reason" 
+              rows="3"
+              placeholder="Décrivez brièvement votre motif de visite..."
+            ></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" (click)="closeAppointmentForm()">
+              Annuler
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="loading">
+              {{ loading ? 'Création...' : 'Confirmer' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reschedule Modal -->
+  <div class="modal-overlay" *ngIf="showRescheduleForm" (click)="closeRescheduleForm()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Reprogrammer le Rendez-vous</h3>
+        <button class="close-btn" (click)="closeRescheduleForm()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="current-appointment" *ngIf="selectedAppointment">
+          Rendez-vous actuel: <strong>{{ formatDate(selectedAppointment.appointmentDate) }}</strong>
+        </p>
+        <form (ngSubmit)="rescheduleAppointment()">
+          <div class="form-group">
+            <label for="newDate">Nouvelle Date et Heure *</label>
+            <input 
+              type="datetime-local" 
+              id="newDate"
+              [(ngModel)]="rescheduleRequest.newAppointmentDate" 
+              name="newDate" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="rescheduleReason">Motif du report</label>
+            <textarea 
+              id="rescheduleReason"
+              [(ngModel)]="rescheduleRequest.reason" 
+              name="rescheduleReason" 
+              rows="3"
+              placeholder="Raison du report..."
+            ></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" (click)="closeRescheduleForm()">
+              Annuler
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="loading">
+              {{ loading ? 'Validation...' : 'Confirmer' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
